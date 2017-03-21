@@ -3,28 +3,31 @@ package games.conways;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Graphics;
 import java.awt.GridLayout;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JColorChooser;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
+import javax.swing.JTable;
+import javax.swing.ListSelectionModel;
 import javax.swing.Timer;
-import javax.swing.border.LineBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumnModel;
 
 public class GUI {
 
@@ -41,7 +44,6 @@ public class GUI {
 	private JScrollPane world_pane = new JScrollPane(world);
 	private JPanel settings = new JPanel();
 	private JLabel counter_label = new JLabel(Integer.toString(counter));
-	private JLabel[][] jl_tiles = new JLabel[X][Y];
 	private JButton start = new JButton("Start");
 	private JButton reset = new JButton("Reset");
 	private JButton next = new JButton("Next");
@@ -51,37 +53,16 @@ public class GUI {
 	private JSlider time_sl = new JSlider(0, 10, 3);
 	private JLabel time_l = new JLabel("Speed");
 	
+	private Object[][] table_objects = new Object[X][Y];
+	private String[] columnNames = new String[X];
+	
 	private Color cl_back = Color.GRAY;
 	private Color cl_lines = Color.WHITE;
 	private Color cl_cells = Color.YELLOW;
+	
+	private JTable table = new JTable();
 		
 	private Logic logic = new Logic();
-	
-	private MouseAdapter ma = new MouseAdapter() {
-		@Override
-		public void mouseClicked(MouseEvent e) {
-			if(!t.isRunning()){
-				Point loc = new Point(e.getPoint().x - jl_tiles[0][0].getLocation().x, e.getPoint().y - jl_tiles[0][0].getLocation().y);
-				JLabel label;
-				if((label = (JLabel)world.getComponentAt(loc)) != null){
-					for(int x = 1; x < X-1; x++){
-						for(int y = 1; y < Y-1; y++){
-							if(jl_tiles[y][x].equals(label)){
-								if(!b_tiles[y][x]){
-									b_tiles[y][x] = true;
-									jl_tiles[y][x].setBackground(cl_cells);
-								}else{
-									b_tiles[y][x] = false;
-									jl_tiles[y][x].setBackground(cl_back);
-								}
-								return;
-							}
-						}
-					}
-				}
-			}
-		}
-	};
 	
 	private ActionListener al = new ActionListener() {
 		
@@ -90,7 +71,6 @@ public class GUI {
 			if(e.getSource().equals(reset)){
 				for(int x = 0; x < X; x++){
 					for(int y = 0; y < Y; y++){
-						jl_tiles[y][x].setBackground(cl_back);
 						b_tiles[y][x] = false;
 					}
 				}
@@ -100,6 +80,7 @@ public class GUI {
 				}
 				counter = 0;
 				counter_label.setText(Integer.toString(counter));
+				world.repaint();
 			}else if(e.getSource().equals(start)){
 				if(t.isRunning()){
 					t.stop();
@@ -110,15 +91,7 @@ public class GUI {
 				}
 			}else if(e.getSource().equals(t)){
 				b_tiles = logic.getNextResult(b_tiles);
-				for(int x = 0; x < X; x++){
-					for(int y = 0; y < Y; y++){
-						if(b_tiles[y][x]){
-							jl_tiles[y][x].setBackground(cl_cells);
-						}else{
-							jl_tiles[y][x].setBackground(cl_back);
-						}
-					}
-				}
+				world.repaint();
 				counter++;
 				counter_label.setText(Integer.toString(counter));
 			}else if(e.getSource().equals(next)){
@@ -127,45 +100,23 @@ public class GUI {
 					start.setText("Start");
 				}
 				b_tiles = logic.getNextResult(b_tiles);
-				for(int x = 0; x < X; x++){
-					for(int y = 0; y < Y; y++){
-						if(b_tiles[y][x]){
-							jl_tiles[y][x].setBackground(cl_cells);
-						}else{
-							jl_tiles[y][x].setBackground(cl_back);
-						}
-					}
-				}
+				world.repaint();
+				
 				counter++;
 				counter_label.setText(Integer.toString(counter));
 			}else if(e.getSource().equals(b_cl_back)){
 				cl_back = JColorChooser.showDialog(null, "Choose Background Color", null);
 				world.setBackground(cl_back);
 				settings.setBackground(cl_back);
-				for(int y = 0; y < Y; y++){
-					for(int x = 0; x < X; x++){
-						if(!b_tiles[y][x]){
-							jl_tiles[y][x].setBackground(cl_back);
-						}
-					}
-				}
+				world.repaint();
 			}else if(e.getSource().equals(b_cl_lines)){
 				cl_lines = JColorChooser.showDialog(null, "Choose Lines Color", null);
-				for(int y = 0; y < Y; y++){
-					for(int x = 0; x < X; x++){
-						jl_tiles[y][x].setBorder(border);
-					}
-				}
+				table.setBorder(BorderFactory.createLineBorder(cl_lines));
+		        table.setGridColor(cl_lines);
 				world.repaint();
 			}else if(e.getSource().equals(b_cl_cells)){
 				cl_cells = JColorChooser.showDialog(null, "Choose Cell Color", null);
-				for(int y = 0; y < Y; y++){
-					for(int x = 0; x < X; x++){
-						if(b_tiles[y][x]){
-							jl_tiles[y][x].setBackground(cl_cells);
-						}
-					}
-				}
+				world.repaint();
 			}
 		}
 	};
@@ -180,38 +131,25 @@ public class GUI {
 		}
 	};
 	
-	private LineBorder border = new LineBorder(cl_lines, 1){
-		
+	private MouseListener ml = new MouseAdapter() {
 		@Override
-		public void paintBorder(final Component c, final Graphics g, final int x, final int y, final int width, final int height) {
-		    super.lineColor = cl_lines;
-		    super.paintBorder(c, g, x, y, width, height);
-		}
+    	public void mouseClicked(MouseEvent e) {
+    		int row = table.rowAtPoint(e.getPoint());
+    		int col = table.columnAtPoint(e.getPoint());
+    		b_tiles[row][col] = b_tiles[row][col] ? false : true;
+    		world.repaint();
+    	}
 	};
 	
 	private Timer t = new Timer(times[3], al);
 	
-	private JFrame l = new JFrame("Conway's Game Of Life");
-	private JProgressBar progressbar = new JProgressBar();
-	
-	
 	public GUI() {
-		l.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		progressbar.setValue(0);
-		progressbar.setBorder(BorderFactory.createTitledBorder("Loading tiles..."));
-		progressbar.setStringPainted(true);
-		l.add(progressbar);
-		l.setSize(300, 100);
-		l.setVisible(true);
-		
-		
 		loadGUI();
 		f.setSize(1000, 1000);
 		f.setTitle("Conway's Game Of Life");
 		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		world.setBackground(cl_back);
-		world.addMouseListener(ma);
 		
 		time_sl.addChangeListener(cl);
 		
@@ -240,28 +178,63 @@ public class GUI {
 		System.out.println("Finished1");
 		f.setVisible(true);
 		System.out.println("Finished2");
-		l.dispose();
 	}
 
 	private void loadGUI() {
 		world.removeAll();
-		world.setLayout(new GridLayout(Y, X));	
-		int index = 0;
-		for(int y = 0; y < Y; y++){
-			for(int x = 0; x < X; x++){
-				jl_tiles[y][x] = new JLabel();
-				jl_tiles[y][x].setMinimumSize(new Dimension(5, 5));
-				jl_tiles[y][x].setMaximumSize(new Dimension(20, 20));
-				jl_tiles[y][x].setPreferredSize(new Dimension(10, 10));
-				jl_tiles[y][x].setSize(10, 10);
-				jl_tiles[y][x].setOpaque(true);
-				jl_tiles[y][x].setBackground(cl_back);
-				jl_tiles[y][x].setBorder(border);
-				world.add(jl_tiles[y][x]);
-				index++;
-				progressbar.setValue(index/X*Y*100);
-			}
-		}
+		world.setLayout(new GridLayout(1, 0));
+		
+		table.setModel(tableModel);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setRowSelectionAllowed(false);
+        table.setColumnSelectionAllowed(false);
+        table.setFillsViewportHeight(true);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        table.setRowHeight(13);
+        table.setTableHeader(null);
+        table.addMouseListener(ml);
+        table.setBorder(BorderFactory.createLineBorder(cl_lines));
+        table.setGridColor(cl_lines);
+        
+        TableColumnModel columnModel = table.getColumnModel();
+        for (int i = 0; i < X; i++) {
+            if (i < columnModel.getColumnCount()) {
+                columnModel.getColumn(i).setMaxWidth(9);
+            }
+            else break;
+        }
+		
+        MyCellRenderer mcr = new MyCellRenderer();
+        for (int columnIndex = 0; columnIndex < table.getColumnCount(); columnIndex ++) {
+                    table.getColumnModel().getColumn(columnIndex).setCellRenderer(mcr);
+        }
+        
+        world.add(new JScrollPane(table, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED));
 		System.out.println("Loaded GUI");
 	}
+	
+	DefaultTableModel tableModel = new DefaultTableModel(table_objects, columnNames){
+		private static final long serialVersionUID = 8699653150398411715L;
+		
+		@Override
+		public boolean isCellEditable(int row, int column){
+			return false;
+		}		
+	};
+	
+	public class MyCellRenderer extends DefaultTableCellRenderer {
+
+		private static final long serialVersionUID = 3791458192959541675L;
+
+		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            Component cellComponent = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if(!b_tiles[row][column]){
+            	cellComponent.setBackground(cl_back);
+            }else{
+            	cellComponent.setBackground(cl_cells);
+            }
+            ((JComponent) cellComponent).setBorder(BorderFactory.createEmptyBorder());
+            return cellComponent;
+        }
+    }
 }
